@@ -6,8 +6,8 @@ import lombok.Data;
 @Data
 public class CarritoDTO {
 
-    private Integer idCarrito;
+    private Integer idInscripcion;
     private LocalDate fechaInscripcion;
     private Integer usuarioId;
-
+    private Integer cursoId;
 }
