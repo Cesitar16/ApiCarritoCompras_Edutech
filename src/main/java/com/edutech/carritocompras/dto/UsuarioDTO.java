@@ -1,10 +1,13 @@
 package com.edutech.carritocompras.dto;
 
 import java.time.LocalDate;
+
+import org.springframework.hateoas.RepresentationModel;
+
 import lombok.Data;
 
 @Data
-public class UsuarioDTO {
+public class UsuarioDTO extends RepresentationModel<UsuarioDTO>{
 
     private Integer idUsuario;
     private String username;
