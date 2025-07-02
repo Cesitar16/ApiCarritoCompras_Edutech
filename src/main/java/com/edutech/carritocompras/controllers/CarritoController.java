@@ -9,9 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-// Importaciones estáticas para HATEOAS
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+// Ya no se necesitan las importaciones de WebMvcLinkBuilder
 
 @RestController
 @RequestMapping("/api/carritos")
@@ -20,6 +18,7 @@ public class CarritoController {
     @Autowired
     private CarritoService service;
 
+    // --- Métodos CRUD estándar (sin cambios) ---
     @PostMapping
     public ResponseEntity<CarritoDTO> crear(@RequestBody CarritoDTO dto) {
         return ResponseEntity.ok(service.guardar(dto));
@@ -60,26 +59,25 @@ public class CarritoController {
      */
     @GetMapping("/hateoas/{id}")
     public CarritoDTO obtenerHATEOAS(@PathVariable Integer id) {
-        // Obtenemos el DTO. Si no existe, lanzará una excepción (o puedes manejarlo como prefieras)
         CarritoDTO dto = service.obtenerPorId(id)
-                .orElseThrow(() -> new RuntimeException("Carrito no encontrado con id: " + id)); // O una excepción más específica
+                .orElseThrow(() -> new RuntimeException("Carrito no encontrado con id: " + id));
 
-        // 1. Links internos del microservicio (usando WebMvcLinkBuilder)
-        // Link a sí mismo (self)
-        dto.add(linkTo(methodOn(CarritoController.class).obtenerHATEOAS(id)).withSelfRel());
-        // Link a la lista de todos los carritos
-        dto.add(linkTo(methodOn(CarritoController.class).listarHATEOAS()).withRel("todos-los-carritos"));
-        // Link para eliminar este carrito
-        dto.add(linkTo(methodOn(CarritoController.class).eliminar(id)).withRel("eliminar"));
-
-        // 2. Links externos a través del API Gateway (construidos manualmente)
+        // URL base del Gateway para construir los enlaces
         String gatewayUrl = "http://localhost:8888/api/proxy/carritos";
-        // Link a sí mismo a través del Gateway
-        dto.add(Link.of(gatewayUrl + "/" + dto.getIdInscripcion()).withSelfRel());
-        // Link para modificar a través del Gateway
-        dto.add(Link.of(gatewayUrl + "/" + dto.getIdInscripcion()).withRel("actualizar-via-gateway").withType("PUT"));
-        // Link para eliminar a través del Gateway
-        dto.add(Link.of(gatewayUrl + "/" + dto.getIdInscripcion()).withRel("eliminar-via-gateway").withType("DELETE"));
+
+        // --- Enlaces apuntando exclusivamente al API Gateway ---
+
+        // Link a sí mismo
+        dto.add(Link.of(gatewayUrl + "/hateoas/" + id).withSelfRel());
+        
+        // Link a la lista de todos los carritos
+        dto.add(Link.of(gatewayUrl + "/hateoas").withRel("todos-los-carritos"));
+        
+        // Link para eliminar
+        dto.add(Link.of(gatewayUrl + "/" + id).withRel("eliminar").withType("DELETE"));
+        
+        // Link para actualizar (nombre simplificado)
+        dto.add(Link.of(gatewayUrl + "/" + id).withRel("actualizar").withType("PUT"));
 
         return dto;
     }
@@ -93,14 +91,13 @@ public class CarritoController {
         String gatewayUrl = "http://localhost:8888/api/proxy/carritos";
 
         for (CarritoDTO dto : carritos) {
-            // 1. Link interno a los detalles de este carrito
-            dto.add(linkTo(methodOn(CarritoController.class).obtenerHATEOAS(dto.getIdInscripcion())).withSelfRel());
+            // Link a los detalles de este carrito
+            dto.add(Link.of(gatewayUrl + "/hateoas/" + dto.getIdInscripcion()).withSelfRel());
 
-            // 2. Links externos a través del API Gateway
-            // Link para crear un nuevo carrito (se puede añadir a cada item o a un wrapper de la colección)
-             dto.add(Link.of(gatewayUrl).withRel("crear-nuevo-carrito").withType("POST"));
+            // Link para crear un nuevo carrito
+            dto.add(Link.of(gatewayUrl).withRel("crear-nuevo-carrito").withType("POST"));
         }
 
         return carritos;
-    }
+    } 
 }
